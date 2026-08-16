@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8" />
+	<title>経費計算システムログイン画面</title>
+</head>
+	<body>
+		<form th:action="@{/top}" th:object="${login}" method="post">
+			<label>ID</label>
+			<input type="text" th:field="*{ID}" />
+			<br />
+			<label>パスワード</label>
+			<input type="text" th:field="*{password}" />
+			<br />
+			<button type="submit">GO</button>
+		</form>
+	</body>
+</html>
