@@ -1,18 +1,15 @@
 package com.example.demo.form;
 
+import jakarta.validation.constraints.NotBlank;
+
+import lombok.Data;
+
+@Data
 public class Login {
+	
+	@NotBlank
 	private String ID;
+	
+	@NotBlank
 	private String Password;
-	public String getID() {
-		return ID;
-	}
-	public void setID(String ID) {
-		this.ID = ID;
-	}
-	public String getPassword() {
-		return Password;
-	}
-	public void setPassword(String Password) {
-		this.Password = Password;
-	}
 }

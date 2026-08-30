@@ -1,10 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<title>トップ画面</title>
+    <meta charset="UTF-8">
+    <title>トップ画面</title>
+    <style>
+        /* 全体の配置調整 */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #ffffff;
+            color: #333333;
+        }
+
+        /* 右上のナビゲーションエリア */
+        .header-nav {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 60px;
+        }
+
+        /* 角丸ボタンのスタイル */
+        .nav-btn {
+            display: inline-block;
+            padding: 6px 20px;
+            border: 1.5px solid #333;
+            border-radius: 25px; /* カプセル型の角丸 */
+            background-color: #fff;
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* メインコンテンツエリア */
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 「ログインしました」の見出し */
+        .title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #666666; /* 画像のような少し柔らかい黒/グレー */
+            margin: 0 0 15px 0;
+            letter-spacing: 1px;
+        }
+
+        /* 太い境界線 */
+        .divider {
+            border: none;
+            border-top: 4px solid #111111; /* 太めの黒い横線 */
+            margin-bottom: 50px;
+        }
+
+        /* 「おかえりなさい」メッセージ */
+        .welcome-message {
+            font-size: 32px;
+            font-weight: bold;
+            color: #555555;
+            text-align: center;
+            margin-top: 40px;
+            letter-spacing: 0.5px;
+        }
+    </style>
 </head>
 <body>
+
+    <!-- 右上のボタンナビゲーション -->
+    <div class="header-nav">
+        <a href="#" class="nav-btn">支出入力</a>
+        <a href="#" class="nav-btn">収入入力</a>
+        <a href="#" class="nav-btn">集計データ</a>
+        <a href="#" class="nav-btn">ログアウト</a>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-container">
+        <h1 class="title">ログインしました</h1>
+        <hr class="divider" />
+        
+        <!-- コントローラーから届いた username を動的に埋め込みます -->
+        <div class="welcome-message">
+            おかえりなさい、 <span th:text="${username}">TESTUSER</span>さん
+        </div>
+    </div>
 
 </body>
 </html>
