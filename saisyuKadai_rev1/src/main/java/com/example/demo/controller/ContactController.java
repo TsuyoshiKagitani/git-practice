@@ -79,4 +79,18 @@ public class ContactController {
         // 表示したい支出入力画面のHTML名（例: shishutsu.html）を指定します
         return "shisyutsu"; 
     }
+    
+    // 「収入入力」ボタンが押された時の遷移処理
+    @RequestMapping(value = "/syuunyuu", method = RequestMethod.GET)
+    public String syuunyuu() {
+        // 表示したい収入入力画面のHTML名（例: syuunyuu.html）を指定します
+        return "syuunyuu"; 
+    }
+    
+    // 「集計データ」ボタンが押された時の遷移処理
+    @RequestMapping(value = "/syuukei", method = RequestMethod.GET)
+    public String syuukei() {
+        // 表示したい集計データ画面のHTML名（例: syuukei.html）を指定します
+        return "syuukei"; 
+    }
 }
