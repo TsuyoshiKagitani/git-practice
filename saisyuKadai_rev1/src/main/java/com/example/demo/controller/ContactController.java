@@ -72,4 +72,11 @@ public class ContactController {
 			return "login"; // ログイン画面に戻る
 		}
 	}
+	
+    // 「支出入力」ボタンが押された時の遷移処理
+    @RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
+    public String shisyutsu() {
+        // 表示したい支出入力画面のHTML名（例: shishutsu.html）を指定します
+        return "shisyutsu"; 
+    }
 }
