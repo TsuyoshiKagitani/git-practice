@@ -19,16 +19,17 @@ public class ContactController {
 
 	// データベース（SQL）と通信するための道具を準備
 	@Autowired
-	JdbcTemplate jdbcTemplate;
+	private JdbcTemplate jdbcTemplate;
 	
-	@RequestMapping("/login")
-	public String login(@ModelAttribute("contactForm") Login log, Model model) {
-		return "login";
-	}
+	// ①ログイン画面の表示 (GET)
+    @RequestMapping(value = "/login", method = RequestMethod.GET)
+    public String login(@ModelAttribute("login") Login log) { // ★ "login" という名前で空の箱を画面へ渡す
+        return "login";
+    }
 
 	// ① IDとパスワードを入力し、「GO」ボタンを押下したときに動くメソッド
 	@RequestMapping(value = "/top", method = RequestMethod.POST)
-	public String top(@ModelAttribute("contactForm") @Validated Login log, BindingResult result, Model model) {
+	public String top(@ModelAttribute("login") @Validated Login log, BindingResult result, Model model) {
 		
 	    if (result.hasErrors()) {
 	        return "login"; 
@@ -41,7 +42,7 @@ public class ContactController {
 
 		// 【②】〇〇テーブルの「ID」と「パスワード」を取得する
 		// （※ここでは入力されたIDをキーにして該当のユーザーレコードをDBから取得します）
-		List<Map<String, Object>> userList = jdbcTemplate.queryForList("SELECT \"id\", \"password\" FROM \"login\" WHERE \"id\" = ?", inputId);
+		List<Map<String, Object>> userList = jdbcTemplate.queryForList("SELECT id, password FROM login WHERE id = ?", inputId);
 
 		// 【③】①で入力したIDと②で取得したIDを比較する
 		// DBから検索結果が得られなかった場合（＝入力されたIDがDBに存在しない / ID不一致）
