@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.example.demo.form.Login;
 @Controller
@@ -74,12 +75,41 @@ public class ContactController {
 		}
 	}
 	
-    // 「支出入力」ボタンが押された時の遷移処理
-    @RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
-    public String shisyutsu() {
-        // 表示したい支出入力画面のHTML名（例: shishutsu.html）を指定します
-        return "shisyutsu"; 
-    }
+	// 支出入力画面の表示と年月での絞り込み
+	@RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
+	public String shisyutsu(
+			@RequestParam(value = "yearMonth", required = false) String yearMonth,
+			Model model
+			) {
+		// ① payoutテーブルの日付から、重複のない年月（YYYY-MM）を過去から現在の順（ASC）で自動抽出
+		String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM payout ORDER BY ym ASC";
+		List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+
+		// ② 初期表示時の自動フォールバック処理
+		if (yearMonth == null || yearMonth.isEmpty()) {
+			if (!yearMonthList.isEmpty()) {
+				// データベースにデータが存在する場合、一番現在に近い「最新の年月（リストの最後）」をデフォルト選択にします
+				yearMonth = yearMonthList.get(yearMonthList.size() - 1);
+			} else {
+				// 万が一データベースが空の場合の安全策
+				yearMonth = "2025-01"; 
+			}
+		}
+
+		// ③ 選択された年月のデータのみを取得（日付の昇順、分類の昇順、金額の昇順）
+		// ※「category」列の名前がデータベースと一致しているか、必要に応じて「bunrui AS category」等に調整してください
+		String sql = "SELECT id, date, classification, amount, shop, payment, memo FROM payout "
+				+ "WHERE CAST(date AS VARCHAR) LIKE ? "
+				+ "ORDER BY date ASC, classification ASC, amount ASC";
+		List<Map<String, Object>> shisyutsuList = jdbcTemplate.queryForList(sql, yearMonth + "%");
+
+		// ④ 画面（Thymeleaf）へデータをバインド
+		model.addAttribute("shisyutsuList", shisyutsuList);
+		model.addAttribute("yearMonthList", yearMonthList); // 動的プルダウン用
+		model.addAttribute("selectedYearMonth", yearMonth); // 選択状態のキープ用
+
+		return "shisyutsu";
+	}
     
     // 「収入入力」ボタンが押された時の遷移処理
     @RequestMapping(value = "/syuunyuu", method = RequestMethod.GET)
