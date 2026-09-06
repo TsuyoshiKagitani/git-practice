@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>支出入力画面</title>
+    <style>
+        /* 全体の初期化とフォント設定 */
+        body {
+            font-family: 'Helvetica Neue', Arial, 'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #ffffff;
+            color: #333333;
+        }
+
+        /* 1. 右上のナビゲーションエリア */
+        .header-nav {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        /* カプセル型角丸ボタン */
+        .nav-btn {
+            display: inline-block;
+            padding: 6px 20px;
+            border: 1.5px solid #333;
+            border-radius: 25px;
+            background-color: #fff;
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 「支出入力」のみ黒背景白文字に反転（現在地表示） */
+        .nav-btn.active {
+            background-color: #000000;
+            color: #ffffff;
+            border-color: #000000;
+        }
+
+        /* 2. メインタイトル「支出」 */
+        .page-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #555555; /* 画像の少し柔らかい濃いグレー */
+            margin: 0 0 30px 0;
+            letter-spacing: 1px;
+        }
+
+        /* 3. プルダウンと更新ボタン */
+        .filter-container {
+            margin-bottom: 15px;
+        }
+
+        .filter-select {
+            font-size: 14px;
+            padding: 2px 5px;
+            border: 1px solid #999;
+            background-color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .btn-update {
+            font-size: 12px;
+            padding: 2px 10px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-update:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* 4. SQLから抽出した一覧テーブル（二重線ボーダーを再現） */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .data-table th, .data-table td {
+            border: 1px solid #777777;
+            padding: 4px 8px;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: #fcfcfc;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* 5. 登録フォーム用テーブル */
+        .register-container {
+            margin-bottom: 30px;
+        }
+
+        .register-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .register-table th {
+            border: 1px solid #cccccc;
+            padding: 6px 8px;
+            font-size: 14px;
+            background-color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .register-table td {
+            border: 1px solid #cccccc;
+            padding: 6px 8px;
+            vertical-align: middle;
+        }
+
+        /* 入力エリア（幅をセルの限界に合わせます） */
+        .register-input {
+            width: 95%;
+            padding: 4px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        /* 登録用のボタン */
+        .btn-register {
+            font-size: 12px;
+            padding: 2px 10px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-register:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* 6. 削除フォームエリア */
+        .delete-container {
+            margin-top: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .delete-label {
+            font-weight: normal;
+        }
+
+        .delete-input {
+            width: 150px;
+            padding: 2px 5px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+        }
+
+        .btn-delete {
+            font-size: 12px;
+            padding: 2px 10px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-delete:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 右上のナビゲーション：画像通り「支出入力」のみを黒背景（アクティブ）にしています -->
+    <div class="header-nav">
+		<a th:href="@{/shisyutsu}" class="nav-btn">支出入力</a>
+		<a th:href="@{/syuunyuu}" class="nav-btn">収入入力</a>
+		<a th:href="@{/syuukei}" class="nav-btn">集計データ</a>
+		<a th:href="@{/login}" class="nav-btn">ログアウト</a>
+    </div>
+
+    <!-- メインタイトル -->
+    <h1 class="page-title">支出</h1>
+
+    <!-- 絞り込みプルダウンと更新ボタン -->
+    <div class="filter-container">
+        <form th:action="@{/shisyutsu}" method="get">
+            <select name="yearMonth" class="filter-select">
+                <option value="2025-01" selected>2025年1月</option>
+                <option value="2025-02">2025年2</option>
+                <option value="2025-03">2025年3</option>
+            </select>
+            <br>
+            <button type="submit" class="btn-update">更新</button>
+        </form>
+    </div>
+
+    <!-- SQLから抽出した表：テーブル形式 -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 5%;">No.</th>
+                <th style="width: 15%;">日時</th>
+                <th style="width: 15%;">分類</th>
+                <th style="width: 10%;">金額</th>
+                <th style="width: 15%;">店舗</th>
+                <th style="width: 15%;">支払方法</th>
+                <th style="width: 25%;">メモ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 
+                ★Thymeleaf 繰り返し：
+                Javaの Controller 側で `jdbcTemplate.queryForList` 等で取得した
+                `shisyutsuList` をループ処理して1行ずつ自動表示します。
+            -->
+            <tr th:each="item, stat : ${shisyutsuList}">
+                <td th:text="${stat.count}">1</td>
+                <td th:text="${item.date}">2025-01-01</td>
+                <td th:text="${item.category}">食費</td>
+                <td th:text="${item.amount}">500</td>
+                <td th:text="${item.store}">コンビニ</td>
+                <td th:text="${item.payment}">財布</td>
+                <td th:text="${item.memo}"></td>
+            </tr>
+            
+            <!-- SQLデータが空だった場合、画面確認のために写真ダミーを初期表示します -->
+            <tr th:if="${#lists.isEmpty(shisyutsuList)}">
+                <td>1</td>
+                <td>2025-01-01</td>
+                <td>食費</td>
+                <td>500</td>
+                <td>コンビニ</td>
+                <td>財布</td>
+                <td></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(shisyutsuList)}">
+                <td>2</td>
+                <td>2025-01-01</td>
+                <td>食費</td>
+                <td>700</td>
+                <td>スーパー</td>
+                <td>財布</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- 新規登録テーブルフォーム -->
+    <div class="register-container">
+        <form th:action="@{/shisyutsu/register}" th:object="${shisyutsuForm}" method="post">
+            <table class="register-table">
+                <thead>
+                    <tr>
+                        <th style="width: 16%;">日時</th>
+                        <th style="width: 16%;">分類</th>
+                        <th style="width: 16%;">金額</th>
+                        <th style="width: 16%;">店舗</th>
+                        <th style="width: 16%;">支払方法</th>
+                        <th style="width: 20%;">メモ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="text" name="date" class="register-input" value="2025-01-01" /></td>
+                        <td><input type="text" name="category" class="register-input" /></td>
+                        <td><input type="text" name="amount" class="register-input" /></td>
+                        <td><input type="text" name="store" class="register-input" /></td>
+                        <td><input type="text" name="payment" class="register-input" /></td>
+                        <td>
+                            <!-- 
+                                ★メモと登録ボタンの横並び：
+                                Flexbox を使って「メモのテキストボックス」の右端に「登録」ボタンをピタッと寄せています
+                            -->
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <input type="text" name="memo" class="register-input" style="flex: 1;" />
+                                <button type="submit" class="btn-register">登録</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+    </div>
+
+    <!-- 削除フォーム -->
+    <div class="delete-container">
+        <form th:action="@{/shisyutsu/delete}" method="post" style="display: flex; align-items: center; gap: 10px;">
+            <span class="delete-label">削除No:</span>
+            <input type="text" name="deleteNo" class="delete-input" />
+            <button type="submit" class="btn-delete">削除</button>
+        </form>
+    </div>
+
+</body>
+</html>

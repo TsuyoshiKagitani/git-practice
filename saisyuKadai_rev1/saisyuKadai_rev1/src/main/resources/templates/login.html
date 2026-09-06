@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ログイン画面</title>
+    <style>
+      /* 全体の初期化とフォント設定 */
+      body {
+          font-family: 'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+          margin: 0;
+          padding: 60px 80px;
+          background-color: #ffffff;
+          color: #333333;
+      }
+
+      /* 1. タイトル：「経費計算システム」（画像に合わせた薄いグレー） */
+      .system-title {
+          font-size: 48px;
+          font-weight: bold;
+          color: #a0a0a0; /* 画像特有の柔らかな明るいグレー */
+          margin: 0 0 40px 0;
+          letter-spacing: -1px;
+      }
+
+      /* 2. 見出し：「ログイン」と下の太い黒線 */
+      .login-heading-container {
+		display: flex;
+		align-items: flex-end; /* 「ログイン」の下線の高さと、赤文字の下部を美しく揃えます */
+		gap: 30px; /* 見出しと赤文字の間の程よい隙間 */
+		margin-bottom: 40px;
+      }
+
+      .login-heading {
+          display: inline-block;
+          font-size: 32px;
+          font-weight: bold;
+          color: #555555; /* 濃いグレー */
+          margin: 0;
+          padding-bottom: 10px;
+          border-bottom: 4px solid #111111; /* 文字の下の太い黒線 */
+          width: 180px; /* 線の長さを画像に近づけるための固定幅 */
+          text-align: left;
+      }
+	  
+	  /* ログイン失敗赤文字の配置調整用スタイル */
+	   .global-error-container {
+	       padding-bottom: 12px; /* アンダーバーの太さや余白に合わせてエラー文字の高さを微調整 */
+	   }
+
+	   .global-error-text {
+	       color: #ff0000;
+	       font-size: 16px;
+	       font-weight: bold;
+	       white-space: nowrap; /* 画面が狭くなっても絶対に途中で改行させない */
+	   }
+	   
+      /* フォーム全体のコンテナ */
+      .form-container {
+          max-width: 600px;
+      }
+
+      /* 入力項目の並び（Flexboxで綺麗に横並び整列） */
+      .form-group {
+          display: flex;
+          align-items: center;
+          margin-bottom: 25px;
+      }
+
+      /* 3. ラベル：「ID」「パスワード」（黒背景に白文字、角丸なしの完全な長方形） */
+      .form-label {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #000000;
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: bold;
+          width: 170px;
+          height: 40px; /* 入力ボックスと高さを完全に統一 */
+          box-sizing: border-box;
+          letter-spacing: 1px;
+      }
+
+      /* 4. 入力ボックス（薄いグレーの極細枠、長い横幅） */
+      .form-input {
+          width: 360px;
+          height: 40px;
+          padding: 5px 10px;
+          font-size: 18px;
+          border: 1px solid #d3d3d3; /* 画像通りの薄いグレー境界線 */
+          box-sizing: border-box;
+          margin-left: 45px; /* ラベルと入力ボックスの間の絶妙な隙間 */
+          outline: none;
+      }
+
+      /* バリデーションエラー（未入力）時の赤文字表示エリア */
+	  .errorStr {
+	        color: #ff0000;
+	        font-size: 14px;
+	        font-weight: bold;
+	        margin-left: 15px; /* 入力ボックスとの間の隙間 */
+	        white-space: nowrap; /* エラー文字が長くなっても、途中で改行して下に落ちるのを防ぎます */
+	    }
+
+      /* ボタンコンテナ（ボタンを右端にピタッと寄せる設定） */
+      .button-container {
+          display: flex;
+          justify-content: flex-end;
+          width: 575px; /* ラベル(170px) + 隙間(45px) + 入力枠(360px) = 575px */
+          margin-top: 15px;
+      }
+
+      /* 5. 「GO」ボタン（青背景に白文字、完全な長方形） */
+      .submit-btn {
+          background-color: #0000ff; /* 鮮やかなブルー */
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: bold;
+          border: none;
+          width: 115px;
+          height: 32px;
+          cursor: pointer;
+          text-align: center;
+          box-sizing: border-box;
+          line-height: 32px;
+      }
+
+      .submit-btn:hover {
+          background-color: #0000cc; /* ホバー時に少し深めの青に変化 */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 経費計算システム タイトル -->
+    <h1 class="system-title">経費計算システム</h1>
+	
+	<div class="form-container">
+	  <!-- 
+	       Controllerから引き渡された `contactForm` オブジェクトをバインド。
+	       ログイン認証を実行する /top へ POST で送信します。
+	    -->
+	   <form th:action="@{/top}" th:object="${login}" method="post">
+
+    <!-- ログイン見出し -->
+    <div class="login-heading-container">
+      <h2 class="login-heading">ログイン</h2>
+	  <!-- ★IDやパスワードが間違っている場合（グローバルエラー）に赤文字表示-->
+	   <div th:if="${#fields.hasGlobalErrors()}" class="global-error-container">
+	       <span th:each="err : ${#fields.globalErrors()}" th:text="${err}" class="global-error-text"></span>
+	   </div>
+	</div>
+
+        <!-- ID 入力エリア -->
+        <div class="form-group">
+          <span class="form-label">ID</span>
+          <input type="text" th:field="*{ID}" class="form-input" autocomplete="off" />
+		  <span th:if="${#fields.hasErrors('ID')}" th:errors="*{ID}" class="errorStr"></span>
+        </div>
+     
+        <!-- パスワード 入力エリア -->
+        <div class="form-group">
+          <span class="form-label">パスワード</span>
+          <input type="password" th:field="*{Password}" class="form-input" />
+		  <span th:if="${#fields.hasErrors('Password')}" th:errors="*{Password}" class="errorStr"></span>
+		  </div>
+
+        <!-- GOボタン（入力エリアの右端に綺麗に整列します） -->
+        <div class="button-container">
+          <button type="submit" class="submit-btn">GO</button>
+        </div>
+      </form>
+    </div>
+  </body>
+</html>
