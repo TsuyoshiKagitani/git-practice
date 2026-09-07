@@ -201,10 +201,16 @@
 	<div class="filter-container">
 	    <form th:action="@{/shisyutsu}" method="get">
 	        <select name="yearMonth" class="filter-select">
-	            <!-- th:selected を使って、コントローラーから渡された選択中年月を画面に維持します -->
-	            <option value="2025-01" th:selected="${selectedYearMonth == '2025-01'}">2025年1月</option>
-	            <option value="2025-02" th:selected="${selectedYearMonth == '2025-02'}">2025年2月</option>
-	            <option value="2025-03" th:selected="${selectedYearMonth == '2025-03'}">2025年3月</option>
+	            <!-- 
+	                payoutテーブルから取得した「過去から現在に至るまで」の年月のみを昇順で動的表示します。
+	                ym.replace('-', '年') + '月' を使うことで「2025年04月」のように自動で変換して表示します。
+	            -->
+	            <option th:each="ym : ${yearMonthList}" 
+	                    th:value="${ym}" 
+	                    th:text="${ym.replace('-', '年') + '月'}" 
+	                    th:selected="${selectedYearMonth == ym}">
+	                2025年1月
+	            </option>
 	        </select>
 	        <br>
 	        <button type="submit" class="btn-update">更新</button>
@@ -258,7 +264,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><input type="text" name="date" class="register-input" value="2025-01-01" /></td>
+                        <td><input type="text" name="date" class="register-input" /></td>
                         <td><input type="text" name="classification" class="register-input" /></td>
                         <td><input type="text" name="amount" class="register-input" /></td>
                         <td><input type="text" name="shop" class="register-input" /></td>

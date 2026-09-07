@@ -75,33 +75,39 @@ public class ContactController {
 		}
 	}
 	
-	// 支出入力画面の表示と年月での絞り込み
 	@RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
 	public String shisyutsu(
 			@RequestParam(value = "yearMonth", required = false) String yearMonth,
 			Model model
 			) {
-		// 1. 初期表示時のデフォルト処理 (パラメータが空ならデフォルトで "2025-01" とする)
+		// ① payoutテーブルの日付から、重複のない年月（YYYY-MM）を過去から現在の順（ASC）で自動抽出
+		String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM payout ORDER BY ym ASC";
+		List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+
+		// ② 初期表示時の自動フォールバック処理
 		if (yearMonth == null || yearMonth.isEmpty()) {
-			yearMonth = "2025-01";
+			if (!yearMonthList.isEmpty()) {
+				// データベースにデータが存在する場合、一番現在に近い「最新の年月（リストの最後）」をデフォルト選択にします
+				yearMonth = yearMonthList.get(yearMonthList.size() - 1);
+			} else {
+				// 万が一データベースが空の場合の安全策
+				yearMonth = "2025-01"; 
+			}
 		}
 
-		// 2. 絞り込み用のSQLを作成
-		// 指定された「年月」のデータを前方一致（LIKE）またはTO_CHAR関数で抽出し、
-		// 「日付、分類、金額」の順番で昇順ソート（ASC）します。
-		// [プロの知恵]：date型カラムのインデックスを有効にするため、CASTやLIKEプレースホルダーを活用します。
+		// ③ 選択された年月のデータのみを取得（日付の昇順、分類の昇順、金額の昇順）
+		// ※「category」列の名前がデータベースと一致しているか、必要に応じて「bunrui AS category」等に調整してください
 		String sql = "SELECT id, date, classification, amount, shop, payment, memo FROM payout "
 				+ "WHERE CAST(date AS VARCHAR) LIKE ? "
 				+ "ORDER BY date ASC, classification ASC, amount ASC";
-
-		// `2025-01` で送られてきたパラメータの後ろに `%` を付加して `2025-01%` にし、前方一致で検索します
 		List<Map<String, Object>> shisyutsuList = jdbcTemplate.queryForList(sql, yearMonth + "%");
 
-		// 3. 画面側にデータと「現在選択されている年月」を渡す
+		// ④ 画面（Thymeleaf）へデータをバインド
 		model.addAttribute("shisyutsuList", shisyutsuList);
-		model.addAttribute("selectedYearMonth", yearMonth); // HTML側のプルダウン保持用
+		model.addAttribute("yearMonthList", yearMonthList); // 動的プルダウン用
+		model.addAttribute("selectedYearMonth", yearMonth); // 選択状態のキープ用
 
-		return "shisyutsu"; // templates/shisyutsu.html を呼び出す
+		return "shisyutsu";
 	}
     
     // 「収入入力」ボタンが押された時の遷移処理
