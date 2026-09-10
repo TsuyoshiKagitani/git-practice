@@ -182,117 +182,136 @@
         .btn-delete:hover {
             background-color: #e0e0e0;
         }
+		/* テーブル内編集フォーム用のスタイリング */
+		.table-input {
+		    width: 100%;
+		    border: none;
+		    background: transparent;
+		    font-size: 14px;
+		    padding: 2px 4px;
+		    box-sizing: border-box;
+		    font-family: inherit;
+		    color: #333333;
+		}
+
+		.table-input:focus {
+		    outline: 1px solid #999999;
+		    background-color: #ffffff;
+		    border-radius: 2px;
+		}
+		
     </style>
 </head>
 <body>
 
-    <!-- 右上のナビゲーション：画像通り「支出入力」のみを黒背景（アクティブ）にしています -->
-    <div class="header-nav">
-		<a th:href="@{/shisyutsu}" class="nav-btn">支出入力</a>
+	<!-- 右上のナビゲーション -->
+	<div class="header-nav">
+		<a th:href="@{/shisyutsu}" class="nav-btn active">支出入力</a>
 		<a th:href="@{/syuunyuu}" class="nav-btn">収入入力</a>
 		<a th:href="@{/syuukei}" class="nav-btn">集計データ</a>
 		<a th:href="@{/login}" class="nav-btn">ログアウト</a>
-    </div>
+	</div>
 
-    <!-- メインタイトル -->
-    <h1 class="page-title">支出</h1>
+	<!-- メインタイトル -->
+	<h1 class="page-title">支出</h1>
 
-	<!-- 絞り込みプルダウンと更新ボタン -->
-	<div class="filter-container">
-	    <form th:action="@{/shisyutsu}" method="get">
+	<!-- ★ 画面全体の唯一の更新フォーム（プルダウンとテーブルを一括送信） -->
+	<form th:action="@{/shisyutsu/update}" method="post">
+
+	    <!-- 絞り込みプルダウンと単一の更新ボタン -->
+	    <div class="filter-container">
 	        <select name="yearMonth" class="filter-select">
-	            <!-- 
-	                payoutテーブルから取得した「過去から現在に至るまで」の年月のみを昇順で動的表示します。
-	                ym.replace('-', '年') + '月' を使うことで「2025年04月」のように自動で変換して表示します。
-	            -->
-	            <option th:each="ym : ${yearMonthList}" 
-	                    th:value="${ym}" 
-	                    th:text="${ym.replace('-', '年') + '月'}" 
-	                    th:selected="${selectedYearMonth == ym}">
-	                2025年1月
-	            </option>
+	            <option value="2025-01" th:selected="${selectedYearMonth == '2025-01'}">2025年1月</option>
+	            <option value="2025-02" th:selected="${selectedYearMonth == '2025-02'}">2025年2月</option>
+	            <option value="2025-03" th:selected="${selectedYearMonth == '2025-03'}">2025年3月</option>
 	        </select>
 	        <br>
+	        <!-- ★ 唯一の「更新」ボタン -->
 	        <button type="submit" class="btn-update">更新</button>
+	    </div>
+
+	    <!-- SQLから抽出した表：テーブル形式 -->
+	    <table class="data-table">
+	        <thead>
+	            <tr>
+	                <th style="width: 5%;">No.</th>
+	                <th style="width: 15%;">日時</th>
+	                <th style="width: 15%;">分類</th>
+	                <th style="width: 10%;">金額</th>
+	                <th style="width: 15%;">店舗</th>
+	                <th style="width: 15%;">支払方法</th>
+	                <th style="width: 25%;">メモ</th>
+	            </tr>
+	        </thead>
+	        <tbody>
+	            <tr th:each="item, stat : ${shisyutsuList}">
+	                <td th:text="${stat.count}">1</td>
+	                <td>
+	                    <!-- 行特定のキーとなる id を隠しフィールドで送信 -->
+	                    <input type="hidden" name="id" th:value="${item.id}" />
+	                    <input type="text" name="date" th:value="${item.date}" class="table-input" />
+	                </td>
+	                <td>
+	                    <input type="text" name="classification" th:value="${item.classification}" class="table-input" />
+	                </td>
+	                <td>
+	                    <input type="text" name="amount" th:value="${item.amount}" class="table-input" />
+	                </td>
+	                <td>
+	                    <input type="text" name="shop" th:value="${item.shop}" class="table-input" />
+	                </td>
+	                <td>
+	                    <input type="text" name="payment" th:value="${item.payment}" class="table-input" />
+	                </td>
+	                <td>
+	                    <input type="text" name="memo" th:value="${item.memo}" class="table-input" />
+	                </td>
+	            </tr>
+	        </tbody>
+	    </table>
+	</form>
+
+	<!-- 新規登録テーブルフォーム -->
+	<div class="register-container">
+	    <form th:action="@{/shisyutsu/register}" th:object="${shisyutsuForm}" method="post">
+	        <table class="register-table">
+	            <thead>
+	                <tr>
+	                    <th style="width: 16%;">日時</th>
+	                    <th style="width: 16%;">分類</th>
+	                    <th style="width: 16%;">金額</th>
+	                    <th style="width: 16%;">店舗</th>
+	                    <th style="width: 16%;">支払方法</th>
+	                    <th style="width: 20%;">メモ</th>
+	                </tr>
+	            </thead>
+	            <tbody>
+	                <tr>
+	                    <td><input type="text" name="date" class="register-input" value="2025-01-01" /></td>
+	                    <td><input type="text" name="classification" class="register-input" /></td>
+	                    <td><input type="text" name="amount" class="register-input" /></td>
+	                    <td><input type="text" name="shop" class="register-input" /></td>
+	                    <td><input type="text" name="payment" class="register-input" /></td>
+	                    <td>
+	                        <div style="display: flex; align-items: center; gap: 5px;">
+	                            <input type="text" name="memo" class="register-input" style="flex: 1;" />
+	                            <button type="submit" class="btn-register">登録</button>
+	                        </div>
+	                    </td>
+	                </tr>
+	            </tbody>
+	        </table>
 	    </form>
 	</div>
 
-    <!-- SQLから抽出した表：テーブル形式 -->
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 5%;">No.</th>
-                <th style="width: 15%;">日時</th>
-                <th style="width: 15%;">分類</th>
-                <th style="width: 10%;">金額</th>
-                <th style="width: 15%;">店舗</th>
-                <th style="width: 15%;">支払方法</th>
-                <th style="width: 25%;">メモ</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- 
-                ★Thymeleaf 繰り返し：
-                Javaの Controller 側で `jdbcTemplate.queryForList` 等で取得した
-                `shisyutsuList` をループ処理して1行ずつ自動表示します。
-            -->
-            <tr th:each="item, stat : ${shisyutsuList}">
-                <td th:text="${stat.count}">1</td>
-                <td th:text="${item.date}">2025-01-01</td>
-                <td th:text="${item.classification}">食費</td>
-                <td th:text="${item.amount}">500</td>
-                <td th:text="${item.shop}">コンビニ</td>
-                <td th:text="${item.payment}">財布</td>
-                <td th:text="${item.memo}"></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <!-- 新規登録テーブルフォーム -->
-    <div class="register-container">
-        <form th:action="@{/shisyutsu/register}" th:object="${shisyutsuForm}" method="post">
-            <table class="register-table">
-                <thead>
-                    <tr>
-                        <th style="width: 16%;">日時</th>
-                        <th style="width: 16%;">分類</th>
-                        <th style="width: 16%;">金額</th>
-                        <th style="width: 16%;">店舗</th>
-                        <th style="width: 16%;">支払方法</th>
-                        <th style="width: 20%;">メモ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><input type="text" name="date" class="register-input" /></td>
-                        <td><input type="text" name="classification" class="register-input" /></td>
-                        <td><input type="text" name="amount" class="register-input" /></td>
-                        <td><input type="text" name="shop" class="register-input" /></td>
-                        <td><input type="text" name="payment" class="register-input" /></td>
-                        <td>
-                            <!-- 
-                                ★メモと登録ボタンの横並び：
-                                Flexbox を使って「メモのテキストボックス」の右端に「登録」ボタンをピタッと寄せています
-                            -->
-                            <div style="display: flex; align-items: center; gap: 5px;">
-                                <input type="text" name="memo" class="register-input" style="flex: 1;" />
-                                <button type="submit" class="btn-register">登録</button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </form>
-    </div>
-
-    <!-- 削除フォーム -->
-    <div class="delete-container">
-        <form th:action="@{/shisyutsu/delete}" method="post" style="display: flex; align-items: center; gap: 10px;">
-            <span class="delete-label">削除No:</span>
-            <input type="text" name="deleteNo" class="delete-input" />
-            <button type="submit" class="btn-delete">削除</button>
-        </form>
-    </div>
+	<!-- 削除フォーム -->
+	<div class="delete-container">
+	    <form th:action="@{/shisyutsu/delete}" method="post" style="display: flex; align-items: center; gap: 10px;">
+	        <span class="delete-label">削除No:</span>
+	        <input type="text" name="deleteNo" class="delete-input" />
+	        <button type="submit" class="btn-delete">削除</button>
+	    </form>
+	</div>
 
 </body>
 </html>
