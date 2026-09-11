@@ -145,6 +145,35 @@ public class ContactController {
         return "redirect:/shisyutsu?yearMonth=" + yearMonth;
     }
     
+ // 新規データ登録処理 (POST)
+    @RequestMapping(value = "/shisyutsu/register", method = RequestMethod.POST)
+    public String register(
+            @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "classification", required = false) String classification,
+            @RequestParam(value = "amount", required = false) Integer amount,
+            @RequestParam(value = "shop", required = false) String shop,
+            @RequestParam(value = "payment", required = false) String payment,
+            @RequestParam(value = "memo", required = false) String memo
+    ) {
+        // 1. 日付が入力されている場合、payout テーブルへ INSERT 実行
+        if (date != null && !date.isEmpty()) {
+            String insertSql = "INSERT INTO payout (date, classification, amount, shop, payment, memo) "
+                             + "VALUES (CAST(? AS DATE), ?, ?, ?, ?, ?)";
+
+            jdbcTemplate.update(insertSql, date, classification, amount, shop, payment, memo);
+        }
+
+        // 2. 登録した日付の年月（YYYY-MM）を抽出（例: "2025-01-01" -> "2025-01"）
+        String yearMonth = "2025-01";
+        if (date != null && date.length() >= 7) {
+            yearMonth = date.substring(0, 7);
+        }
+
+        // 3. PRGパターン適用：登録後に GET /shisyutsu へリダイレクト
+        // 既存の GET メソッドが呼び出され、該当月データが「日付昇順、分類昇順、金額昇順」で自動取得・表示されます
+        return "redirect:/shisyutsu?yearMonth=" + yearMonth;
+    }
+    
     // 「収入入力」ボタンが押された時の遷移処理
     @RequestMapping(value = "/syuunyuu", method = RequestMethod.GET)
     public String syuunyuu() {
