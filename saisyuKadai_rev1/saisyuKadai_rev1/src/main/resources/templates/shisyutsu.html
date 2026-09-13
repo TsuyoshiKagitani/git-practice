@@ -245,7 +245,7 @@
 	        </thead>
 	        <tbody>
 	            <tr th:each="item, stat : ${shisyutsuList}">
-	                <td th:text="${stat.count}">1</td>
+	                <td th:text="${item.no}">1</td>
 	                <td>
 	                    <!-- 行特定のキーとなる id を隠しフィールドで送信 -->
 	                    <input type="hidden" name="id" th:value="${item.id}" />

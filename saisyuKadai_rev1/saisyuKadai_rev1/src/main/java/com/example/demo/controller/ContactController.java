@@ -87,7 +87,7 @@ public class ContactController {
         }
 
         // 2. 絞り込み用のSQLを作成（日付の昇順、分類の昇順、金額の昇順でソート）
-        String sql = "SELECT id, date, classification, amount, shop, payment, memo FROM payout "
+        String sql = "SELECT id, no, date, classification, amount, shop, payment, memo FROM payout "
                    + "WHERE CAST(date AS VARCHAR) LIKE ? "
                    + "ORDER BY date ASC, classification ASC, amount ASC";
 
