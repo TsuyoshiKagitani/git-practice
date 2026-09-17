@@ -21,21 +21,21 @@ public class ContactController {
 	// データベース（SQL）と通信するための道具を準備
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	
+
 	// ①ログイン画面の表示 (GET)
-    @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String login(@ModelAttribute("login") Login log) { // ★ "login" という名前で空の箱を画面へ渡す
-        return "login";
-    }
+	@RequestMapping(value = "/login", method = RequestMethod.GET)
+	public String login(@ModelAttribute("login") Login log) { // ★ "login" という名前で空の箱を画面へ渡す
+		return "login";
+	}
 
 	// ① IDとパスワードを入力し、「GO」ボタンを押下したときに動くメソッド
 	@RequestMapping(value = "/top", method = RequestMethod.POST)
 	public String top(@ModelAttribute("login") @Validated Login log, BindingResult result, Model model) {
-		
-	    if (result.hasErrors()) {
-	        return "login"; 
-	    }
-	    
+
+		if (result.hasErrors()) {
+			return "login"; 
+		}
+
 		// 【①】入力されたIDとパスワードをフォームから取得
 		String inputId = log.getID();
 		String inputPassword = log.getPassword();
@@ -60,10 +60,10 @@ public class ContactController {
 
 		// 【④】①で入力したパスワードと②で取得したパスワードを比較する
 		if (dbPassword != null && dbPassword.equals(inputPassword)) {
-			
+
 			// ★【追加】ログイン成功したユーザーのIDを画面に渡す
 			model.addAttribute("username", dbId); 
-			
+
 			// 【⑤】パスワードも一致すればトップ画面に遷移する
 			return "top";
 
@@ -74,117 +74,187 @@ public class ContactController {
 			return "login"; // ログイン画面に戻る
 		}
 	}
+
+	// 支出入力画面の表示と年月での絞り込み (GET)
+	@RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
+	public String shisyutsu(
+			@RequestParam(value = "yearMonth", required = false) String yearMonth,
+			Model model
+			) {
+		// 1.payoutテーブルからデータが存在する重複のない年月（YYYY-MM）を過去から現在の順（ASC）で自動取得 
+		String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM payout ORDER BY ym ASC";
+		List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+
+		// 2.初期表示時（パラメータ未指定時）の自動設定 
+		if (yearMonth == null || yearMonth.isEmpty()) {
+			if (!yearMonthList.isEmpty()) {
+				// データが存在する場合、一番最新の年月（リストの最後）を初期表示とする 
+				yearMonth = yearMonthList.get(yearMonthList.size() - 1); 
+			} else { 
+				// 万が一データが存在しない場合のフォールバック値 
+				yearMonth = "2025-01";
+			}
+		}
+
+		// 3.絞り込み用のSQLを作成（日付の昇順、分類の昇順、金額の昇順でソート）
+		String sql = "SELECT id, no, date, classification, amount, shop, payment, memo FROM payout "
+				+ "WHERE CAST(date AS VARCHAR) LIKE ? "
+				+ "ORDER BY date ASC, classification ASC, amount ASC";
+
+		List<Map<String, Object>> shisyutsuList = jdbcTemplate.queryForList(sql, yearMonth + "%");
+
+		// 4.画面（Thymeleaf）へデータ・動的プルダウン用リスト・現在選択値をバインド
+		model.addAttribute("shisyutsuList", shisyutsuList);
+		model.addAttribute("yearMonthList", yearMonthList); // 動的プルダウン用リスト 
+		model.addAttribute("selectedYearMonth", yearMonth);
+
+		return "shisyutsu";
+	}
+
+	// テーブル各行の一括更新処理 (POST)
+	@RequestMapping(value = "/shisyutsu/update", method = RequestMethod.POST)
+	public String update(
+			@RequestParam(value = "id", required = false) List<Integer> ids,
+			@RequestParam(value = "date", required = false) List<String> dates,
+			@RequestParam(value = "classification", required = false) List<String> classifications,
+			@RequestParam(value = "amount", required = false) List<Integer> amounts,
+			@RequestParam(value = "shop", required = false) List<String> shops,
+			@RequestParam(value = "payment", required = false) List<String> payments,
+			@RequestParam(value = "memo", required = false) List<String> memos,
+			@RequestParam(value = "yearMonth", required = false) String yearMonth
+			) {
+		// 各行の id を参照して payout テーブルを更新
+		if (ids != null && !ids.isEmpty()) {
+			String updateSql = "UPDATE payout SET "
+					+ "date = CAST(? AS DATE), "
+					+ "classification = ?, "
+					+ "amount = ?, "
+					+ "shop = ?, "
+					+ "payment = ?, "
+					+ "memo = ? "
+					+ "WHERE id = CAST(? AS VARCHAR)"; // ★ ? を VARCHAR にキャスト
+
+			for (int i = 0; i < ids.size(); i++) {
+				// ★ リストがnullでなく、かつ要素数がiより大きいか安全に判定して値を取得します 
+				String dateVal = (dates != null && i < dates.size()) ? dates.get(i) : null; 
+				String classVal = (classifications != null && i < classifications.size()) ? classifications.get(i) : null; 
+				Integer amountVal = (amounts != null && i < amounts.size()) ? amounts.get(i) : null; 
+				String shopVal = (shops != null && i < shops.size()) ? shops.get(i) : null; 
+				String paymentVal = (payments != null && i < payments.size()) ? payments.get(i) : null; 
+				String memoVal = (memos != null && i < memos.size()) ? memos.get(i) : null; 
+				
+				jdbcTemplate.update(updateSql, 
+						dateVal, 
+						classVal, 
+						amountVal, 
+						shopVal, 
+						paymentVal, 
+						memoVal, 
+						ids.get(i)
+						);
+			}
+		}
+
+		if (yearMonth == null || yearMonth.isEmpty()) {
+			yearMonth = "2025-01";
+		}
+
+		// 更新後は PRG パターンで GET /shisyutsu へリダイレクト
+		// これにより当月分データが [日付昇順、分類昇順、金額昇順] で自動的に全件取得・表示されます
+		return "redirect:/shisyutsu?yearMonth=" + yearMonth;
+	}
 	
-	  // 支出入力画面の表示と年月での絞り込み (GET)
-    @RequestMapping(value = "/shisyutsu", method = RequestMethod.GET)
-    public String shisyutsu(
-            @RequestParam(value = "yearMonth", required = false) String yearMonth,
-            Model model
-    ) {
-        // 1. 初期表示時のデフォルト処理 (パラメータが空ならデフォルトで "2025-01" とする)
-        if (yearMonth == null || yearMonth.isEmpty()) {
-            yearMonth = "2025-01";
-        }
+	// レコード削除処理 (POST) 
+	@RequestMapping(value = "/shisyutsu/delete", method = RequestMethod.POST) 
+	public String delete( 
+			@RequestParam(value = "deleteNo", required = false) String deleteNo, 
+			@RequestParam(value = "yearMonth", required = false) String yearMonth 
+			) { 
+		// 1.削除Noが入力されている場合、payout テーブルから該当の id/no レコードを削除 
+		if (deleteNo != null && !deleteNo.trim().isEmpty()) { 
+			// PostgreSQLの型不一致エラーを防ぐため、安全にキャストして指定Noを削除します 
+			String deleteSql = "DELETE FROM payout WHERE CAST(no AS VARCHAR) = ?"; 
+			jdbcTemplate.update(deleteSql, deleteNo.trim());
+			} 
+		
+		// 2\. 表示していた当月（yearMonth）を維持（未指定の場合はデフォルト "2025-01"） 
+		if (yearMonth == null || yearMonth.isEmpty()) { 
+			yearMonth = "2025-01"; 
+		} 
+		
+		// 3\. PRGパターン適用：削除完了後に GET /shisyutsu へリダイレクト 
+		// 既存の GET メソッドにより、最新データが「日付昇順、分類昇順、金額昇順」で自動取得・再表示されます 
+		return "redirect:/shisyutsu?yearMonth=" + yearMonth; 
+	}
 
-        // 2. 絞り込み用のSQLを作成（日付の昇順、分類の昇順、金額の昇順でソート）
-        String sql = "SELECT id, date, classification, amount, shop, payment, memo FROM payout "
-                   + "WHERE CAST(date AS VARCHAR) LIKE ? "
-                   + "ORDER BY date ASC, classification ASC, amount ASC";
+	// 新規データ登録処理 (POST)
+	@RequestMapping(value = "/shisyutsu/register", method = RequestMethod.POST)
+	public String register(
+			@RequestParam(value = "date", required = false) String date,
+			@RequestParam(value = "classification", required = false) String classification,
+			@RequestParam(value = "amount", required = false) Integer amount,
+			@RequestParam(value = "shop", required = false) String shop,
+			@RequestParam(value = "payment", required = false) String payment,
+			@RequestParam(value = "memo", required = false) String memo,
+			@RequestParam(value = "yearMonth", required = false) String yearMonth, 
+			Model model
+			) {
+		// 1. 日付が入力されている場合、payout テーブルへ INSERT 実行
+		// ★【追加】「日付」「分類」「金額」のいずれかが未入力（nullまたは空文字）かチェック 
+		if (date == null || date.trim().isEmpty() || classification == null || classification.trim().isEmpty() || amount == null) { 
+			// 赤字表示用のエラーメッセージをModelにセット 
+			model.addAttribute("registerError", "「日付」「分類」「金額」は必ず入力してください"); 
+			// 再描画に必要な表示データ（年月リスト・一覧リスト）の取得 
+			String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM payout ORDER BY ym ASC"; 
+			List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+			if (yearMonth == null || yearMonth.isEmpty()) { 
+				if (!yearMonthList.isEmpty()) { 
+					yearMonth = yearMonthList.get(yearMonthList.size() - 1); 
+				} else { 
+					yearMonth = "2025-01"; 
+				} 
+			} 
+			
+			String sql = "SELECT id, no, date, classification, amount, shop, payment, memo FROM payout " 
+					+ "WHERE CAST(date AS VARCHAR) LIKE ? " 
+					+ "ORDER BY date ASC, classification ASC, amount ASC"; 
+			
+			List<Map<String, Object>> shisyutsuList = jdbcTemplate.queryForList(sql, yearMonth + "%");
+			
+			model.addAttribute("shisyutsuList", shisyutsuList);
+			model.addAttribute("yearMonthList", yearMonthList);
+			model.addAttribute("selectedYearMonth", yearMonth);
+			
+			return "shisyutsu"; // 自画面に戻りエラー文言を表示
+			}
+		// 1\. 全必須項目が入力されている場合、payout テーブルへ INSERT 実行 
+		String insertSql = "INSERT INTO payout (date, classification, amount, shop, payment, memo) " 
+		+ "VALUES (CAST(? AS DATE), ?, ?, ?, ?, ?)"; 
+		
+		jdbcTemplate.update(insertSql, date, classification, amount, shop, payment, memo); 
+		
+		// 2\. 登録した日付の年月（YYYY-MM）を抽出 
+		if (date.length() >= 7) { 
+			yearMonth = date.substring(0, 7); 
+		} else if (yearMonth == null || yearMonth.isEmpty()) { 
+			yearMonth = "2025-01"; 
+		} 
+		
+		// 3\. PRGパターン適用：登録後に GET /shisyutsu へリダイレクト 
+		return "redirect:/shisyutsu?yearMonth=" + yearMonth; 
+	}
 
-        List<Map<String, Object>> shisyutsuList = jdbcTemplate.queryForList(sql, yearMonth + "%");
+	// 「収入入力」ボタンが押された時の遷移処理
+	@RequestMapping(value = "/syuunyuu", method = RequestMethod.GET)
+	public String syuunyuu() {
+		// 表示したい収入入力画面のHTML名（例: syuunyuu.html）を指定します
+		return "syuunyuu"; 
+	}
 
-        // 3. 画面側にデータと「現在選択されている年月」を渡す
-        model.addAttribute("shisyutsuList", shisyutsuList);
-        model.addAttribute("selectedYearMonth", yearMonth);
-
-        return "shisyutsu";
-    }
-
-    // テーブル各行の一括更新処理 (POST)
-    @RequestMapping(value = "/shisyutsu/update", method = RequestMethod.POST)
-    public String update(
-            @RequestParam(value = "id", required = false) List<Integer> ids,
-            @RequestParam(value = "date", required = false) List<String> dates,
-            @RequestParam(value = "classification", required = false) List<String> classifications,
-            @RequestParam(value = "amount", required = false) List<Integer> amounts,
-            @RequestParam(value = "shop", required = false) List<String> shops,
-            @RequestParam(value = "payment", required = false) List<String> payments,
-            @RequestParam(value = "memo", required = false) List<String> memos,
-            @RequestParam(value = "yearMonth", required = false) String yearMonth
-    ) {
-        // 各行の id を参照して payout テーブルを更新
-        if (ids != null && !ids.isEmpty()) {
-        	String updateSql = "UPDATE payout SET "
-                    + "date = CAST(? AS DATE), "
-                    + "classification = ?, "
-                    + "amount = ?, "
-                    + "shop = ?, "
-                    + "payment = ?, "
-                    + "memo = ? "
-                    + "WHERE id = CAST(? AS VARCHAR)"; // ★ ? を VARCHAR にキャスト
-
-            for (int i = 0; i < ids.size(); i++) {
-                jdbcTemplate.update(updateSql,
-                    dates.get(i),
-                    classifications.get(i),
-                    amounts.get(i),
-                    shops.get(i),
-                    payments.get(i),
-                    memos.get(i),
-                    ids.get(i)
-                );
-            }
-        }
-
-        if (yearMonth == null || yearMonth.isEmpty()) {
-            yearMonth = "2025-01";
-        }
-
-        // 更新後は PRG パターンで GET /shisyutsu へリダイレクト
-        // これにより当月分データが [日付昇順、分類昇順、金額昇順] で自動的に全件取得・表示されます
-        return "redirect:/shisyutsu?yearMonth=" + yearMonth;
-    }
-    
- // 新規データ登録処理 (POST)
-    @RequestMapping(value = "/shisyutsu/register", method = RequestMethod.POST)
-    public String register(
-            @RequestParam(value = "date", required = false) String date,
-            @RequestParam(value = "classification", required = false) String classification,
-            @RequestParam(value = "amount", required = false) Integer amount,
-            @RequestParam(value = "shop", required = false) String shop,
-            @RequestParam(value = "payment", required = false) String payment,
-            @RequestParam(value = "memo", required = false) String memo
-    ) {
-        // 1. 日付が入力されている場合、payout テーブルへ INSERT 実行
-        if (date != null && !date.isEmpty()) {
-            String insertSql = "INSERT INTO payout (date, classification, amount, shop, payment, memo) "
-                             + "VALUES (CAST(? AS DATE), ?, ?, ?, ?, ?)";
-
-            jdbcTemplate.update(insertSql, date, classification, amount, shop, payment, memo);
-        }
-
-        // 2. 登録した日付の年月（YYYY-MM）を抽出（例: "2025-01-01" -> "2025-01"）
-        String yearMonth = "2025-01";
-        if (date != null && date.length() >= 7) {
-            yearMonth = date.substring(0, 7);
-        }
-
-        // 3. PRGパターン適用：登録後に GET /shisyutsu へリダイレクト
-        // 既存の GET メソッドが呼び出され、該当月データが「日付昇順、分類昇順、金額昇順」で自動取得・表示されます
-        return "redirect:/shisyutsu?yearMonth=" + yearMonth;
-    }
-    
-    // 「収入入力」ボタンが押された時の遷移処理
-    @RequestMapping(value = "/syuunyuu", method = RequestMethod.GET)
-    public String syuunyuu() {
-        // 表示したい収入入力画面のHTML名（例: syuunyuu.html）を指定します
-        return "syuunyuu"; 
-    }
-    
-    // 「集計データ」ボタンが押された時の遷移処理
-    @RequestMapping(value = "/syuukei", method = RequestMethod.GET)
-    public String syuukei() {
-        // 表示したい集計データ画面のHTML名（例: syuukei.html）を指定します
-        return "syuukei"; 
-    }
+	// 「集計データ」ボタンが押された時の遷移処理
+	@RequestMapping(value = "/syuukei", method = RequestMethod.GET)
+	public String syuukei() {
+		// 表示したい集計データ画面のHTML名（例: syuukei.html）を指定します
+		return "syuukei"; 
+	}
 }

@@ -221,14 +221,35 @@
 	    <!-- 絞り込みプルダウンと単一の更新ボタン -->
 	    <div class="filter-container">
 	        <select name="yearMonth" class="filter-select">
-	            <option value="2025-01" th:selected="${selectedYearMonth == '2025-01'}">2025年1月</option>
-	            <option value="2025-02" th:selected="${selectedYearMonth == '2025-02'}">2025年2月</option>
-	            <option value="2025-03" th:selected="${selectedYearMonth == '2025-03'}">2025年3月</option>
-	        </select>
-	        <br>
+				<!-- 
+				      ★ payoutテーブルから取得した年月リスト（yearMonthList）をループで自動出力します。
+				      th:text 内で '-' を '年' に置換し末尾に '月' を付けることで「2025年01月」表記に変換します。
+				-->
+					<option th:each="ym : ${yearMonthList}"
+						th:value="${ym}" th:text="${ym.replace('-', '年') + '月'}" 
+						th:selected="${selectedYearMonth == ym}"&gt;
+						2025年1月
+					</option>
+			</select>
+			<br />
 	        <!-- ★ 唯一の「更新」ボタン -->
 	        <button type="submit" class="btn-update">更新</button>
+			<!-- ★【追加箇所】未入力エラー発生時に絞り込みプルダウン近くへ赤字表示 -->
+			<div th:if="${registerError}" style="color: red; font-size: 14px; font-weight: bold; margin-top: 8px;" th:text="${registerError}">
+				「日付」「分類」「金額」は必ず入力してください
+			</div>
 	    </div>
+		
+		<!-- 新規登録テーブルフォーム -->
+		<div class="register-container">
+			<form th:action="@{/shisyutsu/register}" method="post">
+				<!-- ★【追加箇所】登録時も選択中の年月を引き継ぐように送信 -->
+		    	<input type="hidden" name="yearMonth" th:value="${selectedYearMonth}" />
+				<table class="register-table"> 
+					<!-- (テーブルヘッダー・入力フィールド部分は既存の記述のまま) -->
+				</table>
+			</form>	 
+		</div>
 
 	    <!-- SQLから抽出した表：テーブル形式 -->
 	    <table class="data-table">
@@ -245,7 +266,7 @@
 	        </thead>
 	        <tbody>
 	            <tr th:each="item, stat : ${shisyutsuList}">
-	                <td th:text="${stat.count}">1</td>
+	                <td th:text="${item.no}">1</td>
 	                <td>
 	                    <!-- 行特定のキーとなる id を隠しフィールドで送信 -->
 	                    <input type="hidden" name="id" th:value="${item.id}" />
@@ -287,7 +308,7 @@
 	            </thead>
 	            <tbody>
 	                <tr>
-	                    <td><input type="text" name="date" class="register-input" value="2025-01-01" /></td>
+	                    <td><input type="text" name="date" class="register-input" /></td>
 	                    <td><input type="text" name="classification" class="register-input" /></td>
 	                    <td><input type="text" name="amount" class="register-input" /></td>
 	                    <td><input type="text" name="shop" class="register-input" /></td>
@@ -307,6 +328,8 @@
 	<!-- 削除フォーム -->
 	<div class="delete-container">
 	    <form th:action="@{/shisyutsu/delete}" method="post" style="display: flex; align-items: center; gap: 10px;">
+			<!-- 現在選択中の年月を保持してリダイレクト先に引き継ぎます -->
+			<input type="hidden" name="yearMonth" th:value="${selectedYearMonth}" />
 	        <span class="delete-label">削除No:</span>
 	        <input type="text" name="deleteNo" class="delete-input" />
 	        <button type="submit" class="btn-delete">削除</button>
