@@ -226,8 +226,9 @@
 				      th:text 内で '-' を '年' に置換し末尾に '月' を付けることで「2025年01月」表記に変換します。
 				-->
 					<option th:each="ym : ${yearMonthList}"
-						th:value="${ym}" th:text="${ym.replace('-', '年') + '月'}" 
-						th:selected="${selectedYearMonth == ym}"&gt;
+						th:value="${ym}" 
+						th:text="${ym.replace('-', '年') + '月'}" 
+						th:selected="${selectedYearMonth == ym}">
 						2025年1月
 					</option>
 			</select>
@@ -240,16 +241,16 @@
 			</div>
 	    </div>
 		
-		<!-- 新規登録テーブルフォーム -->
-		<div class="register-container">
-			<form th:action="@{/shisyutsu/register}" method="post">
-				<!-- ★【追加箇所】登録時も選択中の年月を引き継ぐように送信 -->
-		    	<input type="hidden" name="yearMonth" th:value="${selectedYearMonth}" />
-				<table class="register-table"> 
-					<!-- (テーブルヘッダー・入力フィールド部分は既存の記述のまま) -->
-				</table>
-			</form>	 
-		</div>
+<!--		 新規登録テーブルフォーム -->
+<!--		<div class="register-container">-->
+<!--			<form th:action="@{/shisyutsu/register}" method="post">-->
+<!--				 ★【追加箇所】登録時も選択中の年月を引き継ぐように送信 -->
+<!--		    	<input type="hidden" name="yearMonth" th:value="${selectedYearMonth}" />-->
+<!--				<table class="register-table"> -->
+<!--					 (テーブルヘッダー・入力フィールド部分は既存の記述のまま) -->
+<!--				</table>-->
+<!--			</form>	 -->
+<!--		</div>-->
 
 	    <!-- SQLから抽出した表：テーブル形式 -->
 	    <table class="data-table">
@@ -295,6 +296,7 @@
 	<!-- 新規登録テーブルフォーム -->
 	<div class="register-container">
 	    <form th:action="@{/shisyutsu/register}" method="post">
+			<input type="hidden" name="yearMonth" th:value="${selectedYearMonth}" />
 	        <table class="register-table">
 	            <thead>
 	                <tr>
