@@ -1,10 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
+
 <head>
-<meta charset="UTF-8">
-<title>Insert title here</title>
+	<meta charset="UTF-8">
+	<title>集計データ</title>
+	<style>
+		/* 1. 右上のナビゲーションエリア */
+		.header-nav {
+			display: flex;
+			justify-content: flex-end;
+			gap: 12px;
+			margin-bottom: 20px;
+		}
+
+		/* カプセル型角丸ボタン */
+		.nav-btn {
+			display: inline-block;
+			padding: 6px 20px;
+			border: 1.5px solid #333;
+			border-radius: 25px;
+			background-color: #fff;
+			color: #333;
+			font-size: 14px;
+			font-weight: bold;
+			text-decoration: none;
+			text-align: center;
+			transition: background-color 0.2s;
+		}
+
+		.nav-btn:hover {
+			background-color: #f0f0f0;
+		}
+
+		/* 「集計データ」のみ黒背景白文字に反転（現在地表示） */
+		.nav-btn.active {
+			background-color: #000000;
+			color: #ffffff;
+			border-color: #000000;
+		}
+
+		/* 2. メインタイトル「支出」 */
+		.page-title {
+			font-size: 48px;
+			font-weight: bold;
+			color: #555555;
+			/* 画像の少し柔らかい濃いグレー */
+			margin: 0 0 30px 0;
+			letter-spacing: 1px;
+		}
+		/* ★【追加】3\. タブボタンエリア（支出/収入/CSV出力） */ 
+		
+		.tab-container { 
+			display: flex; 
+			justify-content: space-between; 
+			align-items: center; 
+			width: 100%; /* ★ 横幅を画面いっぱいに広げる */
+			margin-bottom: 20px; 
+		} 
+		
+		.tab-left { 
+			display: flex; 
+			gap: 15px; 
+		} 
+		
+		/* ★【追加】CSVボタンを右端へ強力に押し出す設定 */ 
+		.tab-right { 
+			margin-left: auto; 
+		}
+		
+		/* 黄色の支出ボタン */ 
+		.btn-tab-shisyutsu { 
+			display: inline-block; 
+			width: 120px; 
+			padding: 6px 0; 
+			background-color: #ffff00; /* 黄色 */ 
+			color: #000000; 
+			border: 1px solid #333; 
+			text-align: center; 
+			text-decoration: none; 
+			font-weight: bold; 
+			font-size: 14px; 
+		} 
+		
+		/* 緑色の収入ボタン */ 
+		.btn-tab-syuunyuu { 
+			display: inline-block; 
+			width: 120px; 
+			padding: 6px 0; 
+			background-color: #a6ff4d; /* 黄緑色 */
+			color: #000000; 
+			border: 1px solid #333; 
+			text-align: center; 
+			text-decoration: none; 
+			font-weight: bold; 
+			font-size: 14px; 
+		} 
+		
+		/* CSV出力ボタン */ 
+		.btn-csv { 
+			display: inline-block; 
+			width: 110px; 
+			padding: 6px 0; 
+			background-color: #d3d3d3; /* グレー */ 
+			color: #000000; 
+			border: 1px solid #333; 
+			text-align: center; 
+			text-decoration: none; 
+			font-size: 14px; 
+			cursor: pointer; 
+		}
+		/* 3. プルダウンと更新ボタン */
+		.filter-container {
+			margin-bottom: 25px;
+		}
+
+		.filter-row { 
+			display: flex; 
+			gap: 15px; 
+			margin-bottom: 8px; 
+		}
+		
+		/* 青背景のプルダウン */ 
+		.filter-select-blue 
+		{ font-size: 14px; 
+			padding: 4px 10px; 
+			border: 1px solid #0000cc; 
+			background-color: #0000ff; /* 青色 */ 
+			color: #ffffff; /* 白文字 */ 
+			font-weight: bold; 
+			width: 160px; 
+		} 
+		
+		.btn-update { 
+			font-size: 12px; 
+			padding: 3px 25px; 
+			border: 1px solid #777; 
+			background-color: #d3d3d3; /* グレー */ 
+			cursor: pointer; 
+			border-radius: 2px; 
+		}
+
+		.btn-update:hover {
+			background-color: #e0e0e0;
+		}
+
+		/* ★【変更】5. 一覧テーブル（View画面用：ヘッダー黄色） */ 
+		.data-table { 
+			width: 100%; 
+			border-collapse: collapse; 
+			margin-bottom: 30px; 
+		}
+
+		.data-table th,
+		.data-table td {
+			border: 1px solid #777777;
+			padding: 6px 10px;
+			font-size: 14px;
+			text-align: left;
+		}
+
+		/* ヘッダー部を黄色背景・中央揃えに変更 */ 
+		.data-table th { 
+			background-color: #ffff00; /* 黄色 */ 
+			font-weight: bold; 
+			text-align: center; 
+			color: #000000;
+		}
+	</style>
 </head>
+
 <body>
 
+	<!-- 右上のナビゲーション -->
+	<div class="header-nav">
+		<a th:href="@{/shisyutsu}" class="nav-btn">支出入力</a>
+		<a th:href="@{/syuunyuu}" class="nav-btn">収入入力</a>
+		<a th:href="@{/syuukei}" class="nav-btn active">集計データ</a>
+		<a th:href="@{/login}" class="nav-btn">ログアウト</a>
+	</div>
+
+	<!-- メインタイトル -->
+	<h1 class="page-title">集計データ</h1>
+	<!-- ★【追加】「支出」「収入」切り替えボタン ＆ 「CSV出力」ボタン -->
+	<div class="tab-container">
+		<div class="tab-left">
+			<a th:href="@{/syuukei(type='shisyutsu')}" class="btn-tab-shisyutsu">支出</a>
+			<a th:href="@{/syuukei(type='shuunyuu')}" class="btn-tab-syuunyuu">収入</a> 
+		</div> 
+		<div class="tab-right">  
+			<button type="button" class="btn-csv">CSV出力</button>
+		</div>
+	</div>
+	
+	<!-- 集計条件絞り込みフォーム -->
+	<form th:action="@{/syuukei}" method="get">
+		<div class="filter-container">
+			<!-- ★【変更】青色スタイルのプルダウン並び（年月・分類） -->
+			<div class="filter-row">
+				<!-- 年月選択プルダウン -->
+				<select name="yearMonth" class="filter-select-blue">
+					<option th:each="ym : ${yearMonthList}" 
+					th:value="${ym}" 
+					th:text="${ym.replace('-', '年') + '月'}" 
+					th:selected="${selectedYearMonth == ym}"> 
+						2024年12月 
+					</option>
+				</select>
+				
+				<!-- 分類選択プルダウン -->
+				<select name="classification" class="filter-select-blue">
+					<option value="">すべて</option> 
+					<option th:each="cls : ${classificationList}" 
+						th:value="${cls}" 
+						th:text="${cls}"> 
+						食費 
+					</option>
+				</select>
+			</div>
+			
+			<!-- 「集計」ボタン -->
+			<button type="submit" class="btn-update">集計</button>	
+		</div>
+	</form>
+	
+	<!-- ★【変更】閲覧専用（View画面）データ表示テーブル -->
+
+<!--		 SQLから抽出した表：テーブル形式 -->
+		<table class="data-table">
+			<thead>
+				<tr>
+					<th style="width: 15%;">日時</th>
+					<th style="width: 15%;">分類</th>
+					<th style="width: 10%;">金額</th>
+					<th style="width: 15%;">お店</th>
+					<th style="width: 15%;">支払方法</th>
+					<th style="width: 25%;">メモ</th>
+				</tr>
+			</thead>
+			<tbody>
+<!--				 ★【変更】input要素を撤去し、th:textによる純粋な文字表示（View画面化）に変更 -->
+				<tr th:each="item : ${syuukeiList}">
+					<td th:text="${item.date}">01/01</td>
+					<td th:text="${item.classification}">食費</td>
+					<td th:text="${item.amount != null ? item.amount + ' 円' : ''}">500 円</td>
+					<td th:text="${item.shop}">コンビニ</td>
+					<td th:text="${item.payment}">財布</td>
+					<td th:text="${item.memo}"></td>
+				</tr>
+			</tbody>
+		</table>
 </body>
+
 </html>

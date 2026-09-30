@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.example.demo.form.Login;
 import com.example.demo.form.ShisyutsuForm; // ★【追加】ShisyutsuFormのインポート
+import com.example.demo.form.SyuukeiForm;
 import com.example.demo.form.SyuunyuuForm;
 
 @Controller
@@ -316,7 +317,7 @@ public class ContactController {
 			@RequestParam(value = "yearMonth", required = false) String yearMonth) {
 		// 1. フォームから送信された各行データを更新 [1] 
 		if (ids != null && !ids.isEmpty()) {
-			String updateSql = "UPDATE syuunyuu SET "
+			String updateSql = "UPDATE income SET "
 					+ "date = CAST(? AS DATE), "
 					+ "classification = ?, "
 					+ "amount = ?, "
@@ -454,10 +455,119 @@ public class ContactController {
 		return "redirect:/syuunyuu?yearMonth=" + yearMonth;
 	}
 
-	// 「集計データ」ボタンが押された時の遷移処理
-	@RequestMapping(value = "/syuukei", method = RequestMethod.GET)
-	public String syuukei() {
-		// 表示したい集計データ画面のHTML名（例: syuukei.html）を指定します
+	// 「集計データ」ボタンが押された時の遷移処理 
+	@RequestMapping(value = "/syuukei", method = RequestMethod.GET) 
+	public String syuukei( 
+			@ModelAttribute("syuukeiForm") SyuukeiForm form, 
+			@RequestParam(value = "type", required = false, defaultValue = "shisyutsu") String type, // ★ 種別（shisyutsu / syuunyuu） 
+			@RequestParam(value = "yearMonth", required = false) String yearMonth, 
+			@RequestParam(value = "classification", required = false) String classification, // ★ 分類絞り込み 
+			Model model) { 
+		
+		// 1. 対象テーブルの決定（shisyutsuならpayout、syuunyuuならincome） 
+		String targetTable = "syuunyuu".equals(type) ? "income" : "payout"; 
+		
+		// 2. 年月リストを取得 
+		String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM " + targetTable + " ORDER BY ym ASC"; 
+		List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+		
+		if (yearMonth == null || yearMonth.isEmpty()) { 
+			if (!yearMonthList.isEmpty()) { 
+				yearMonth = yearMonthList.get(yearMonthList.size() - 1); 
+				} else { 
+					yearMonth = "2025-01"; 
+				} 
+	}
+	
+	// 3. 分類リストをDBから動的に取得 
+	String clsSql = "SELECT DISTINCT classification FROM " + targetTable + " WHERE classification IS NOT NULL ORDER BY classification ASC"; 
+	List<String> classificationList = jdbcTemplate.queryForList(clsSql, String.class);
+	
+	// 4. データ抽出用SQLの組み立て（年月 ＋ 分類絞り込み）
+	StringBuilder sql = new StringBuilder(); 
+	sql.append("SELECT id, date, classification, amount, shop, payment, memo FROM ").append(targetTable); 
+	sql.append(" WHERE TO_CHAR(date, 'YYYY-MM') = ? ");
+	
+	List<Object> params = new java.util.ArrayList<>();
+	params.add(yearMonth);
+	
+	if (classification != null && !classification.trim().isEmpty()) { 
+		sql.append(" AND classification = ? "); 
+		params.add(classification);
+	}		
+		sql.append(" ORDER BY date ASC, classification ASC, amount ASC"); 
+		List<Map<String, Object>> syuukeiList = jdbcTemplate.queryForList(sql.toString(), params.toArray());
+		
+		// 5. Modelへ画面表示用データを格納
+		model.addAttribute("syuukeiList", syuukeiList); 
+		model.addAttribute("yearMonthList", yearMonthList); 
+		model.addAttribute("classificationList", classificationList);
+		model.addAttribute("selectedYearMonth", yearMonth); 
+		model.addAttribute("selectedClassification", classification); 
+		model.addAttribute("selectedType", type);
+		
 		return "syuukei";
 	}
+	
+	
+
+
+	// テーブル各行の一括更新処理 (POST) [1] 
+	@RequestMapping(value = "/syuukei/syuukei", method = RequestMethod.POST)
+	public String update3(
+			@RequestParam(value = "id", required = false) List<Integer> ids,
+			@RequestParam(value = "date", required = false) List<String> dates,
+			@RequestParam(value = "classification", required = false) List<String> classifications,
+			@RequestParam(value = "amount", required = false) List<Integer> amounts,
+			@RequestParam(value = "shop", required = false) List<String> shops,
+			@RequestParam(value = "payment", required = false) List<String> payments,
+			@RequestParam(value = "memo", required = false) List<String> memos,
+			@RequestParam(value = "yearMonth", required = false) String yearMonth) {
+		// 1. フォームから送信された各行データを更新 [1] 
+		if (ids != null && !ids.isEmpty()) {
+			String updateSql = "UPDATE income SET "
+					+ "date = CAST(? AS DATE), "
+					+ "classification = ?, "
+					+ "amount = ?, "
+					+ "shop = ?, "
+					+ "payment = ?, "
+					+ "memo = ? "
+					+ "WHERE id = CAST(? AS VARCHAR)";
+
+			for (int i = 0; i < ids.size(); i++) {
+				String dateVal = (dates != null && i < dates.size()) ? dates.get(i) : null;
+				String classVal = (classifications != null && i < classifications.size()) ? classifications.get(i)
+						: null;
+				Integer amountVal = (amounts != null && i < amounts.size()) ? amounts.get(i) : null;
+				String shopVal = (shops != null && i < shops.size()) ? shops.get(i) : null;
+				String paymentVal = (payments != null && i < payments.size()) ? payments.get(i) : null;
+				String memoVal = (memos != null && i < memos.size()) ? memos.get(i) : null;
+
+				jdbcTemplate.update(updateSql,
+						dateVal,
+						classVal,
+						amountVal,
+						shopVal,
+						paymentVal,
+						memoVal,
+						ids.get(i));
+			}
+		}
+		// 2. 年月が取得できなかった場合のフォールバック処理 [1] 
+		if (yearMonth == null || yearMonth.isEmpty()) {
+			String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM income ORDER BY ym ASC";
+			List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
+			if (!yearMonthList.isEmpty()) {
+				yearMonth = yearMonthList.get(yearMonthList.size() - 1);
+			} else {
+				yearMonth = "2025-01";
+			}
+		}
+
+		// 3. 選択中の年月を引き継いで GET /shisyutsu へリダイレクト [1, 2]
+		return "redirect:/syuukei?yearMonth=" + yearMonth;
+
+	}
+
+	
 }
