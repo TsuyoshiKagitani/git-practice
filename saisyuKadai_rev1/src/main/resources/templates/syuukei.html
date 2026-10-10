@@ -187,7 +187,10 @@
 		<a th:href="@{/syuukei(type='syuunyuu')}" class="btn-tab-syuunyuu">収入</a>
 	</div>
 	<div class="tab-right">
-		<button type="button" class="btn-csv">CSV出力</button>
+		<!-- ★【追加/仕様①対応】「CSV出力」ボタンをリンクに変更し、表示中の選択条件（type, yearMonth, classification）をパラメータで受け渡します -->
+		<a th:href="@{/syuukei/csv(type=${selectedType}, yearMonth=${selectedYearMonth}, classification=${selectedClassification})}" 
+		   class="btn-csv" 
+		   style="display: inline-block; text-align: center; text-decoration: none; line-height: 28px;">CSV出力</a>
 	</div>
 </div>
 
@@ -223,12 +226,12 @@
 	</div>
 </form>
 
-<!-- ★ 検索結果が 0 件の場合は赤字メッセージを表示 -->
+<!-- 検索結果が 0 件の場合は赤字メッセージを表示 -->
 <div th:if="${#lists.isEmpty(syuukeiList)}" class="no-data-msg">
 	検索結果は０件です
 </div>
 
-<!-- ★ 検索結果が存在する場合のみテーブルを表示 -->
+<!-- 検索結果が存在する場合のみテーブルを表示 -->
 <table th:unless="${#lists.isEmpty(syuukeiList)}" class="data-table">
 	<thead>
 		<tr>

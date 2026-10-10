@@ -1,9 +1,17 @@
 package com.example.demo.controller;
 
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime; // ★【追加】ダウンロード日時の取得用
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+
+import jakarta.servlet.http.HttpServletResponse; // ★【追加】ファイルダウンロードレスポンス制御用
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -519,7 +527,90 @@ public class ContactController {
 	}
 	
 	
+	// ★【追加/仕様①②③対応】「CSV出力」ボタンが押された時のCSVダウンロード処理 
+	@RequestMapping(value = "/syuukei/csv", method = RequestMethod.GET) 
+	public void downloadCsv( 
+			@RequestParam(value = "type", required = false, defaultValue = "shisyutsu") String type, 
+			@RequestParam(value = "yearMonth", required = false) String yearMonth, 
+			@RequestParam(value = "classification", required = false) String classification, 
+			HttpServletResponse response) throws Exception { 
+		
+		// 1. 対象テーブルの判定 (shisyutsuならpayout、syuunyuuならincome) 
+		String targetTable = ("syuunyuu".equals(type) || "shuunyuu".equals(type)) ? "income" : "payout"; 
+		
+		// 2. 年月の未指定時フォロー（当月を取得） 
+		String currentYearMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM")); 
+		if (yearMonth == null || yearMonth.isEmpty()) { 
+			yearMonth = currentYearMonth; } 
+		
+		// 3. 表示画面と同じ条件でDBからデータ取得 
+		StringBuilder sql = new StringBuilder(); 
+		sql.append("SELECT date, classification, amount, shop, payment, memo FROM ").append(targetTable); 
+		sql.append(" WHERE TO_CHAR(date, 'YYYY-MM') = ? "); 
+		
+		List<Object> params = new java.util.ArrayList<>();
+		params.add(yearMonth);
 
+		if (classification != null && !classification.trim().isEmpty()) {
+			sql.append(" AND classification = ? ");
+			params.add(classification);
+		}
+		sql.append(" ORDER BY date ASC, classification ASC, amount ASC");
+
+		List<Map<String, Object>> list = jdbcTemplate.queryForList(sql.toString(), params.toArray());
+
+		// 4. 【仕様③対応】ファイル名の組み立て
+		// 形式：ダウンロード時の年月日時分秒_指定している期間の年月_指定している分類.csv
+		// 例：20261010095540_202411_日用品.csv
+		String nowStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+		String ymStr = yearMonth.replace("-", ""); // "2024-11" -> "202411"
+		String clsStr = (classification != null && !classification.trim().isEmpty()) ? classification : "すべて";
+
+		String fileName = nowStr + "_" + ymStr + "_" + clsStr + ".csv";
+
+		// 5. HTTPヘッダー設定（UTF-8エンコードによるファイル名の文字化け防止）
+		String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20");
+		response.setContentType("text/csv; charset=UTF-8");
+		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+
+		// 6. CSVデータ出力（Excelでの日本語文字化け防止のためUTF-8 BOMを付与）
+		try (OutputStream os = response.getOutputStream();
+			 PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+
+			// UTF-8 BOMを出力 (0xEF, 0xBB, 0xBF)
+			os.write(0xEF);
+			os.write(0xBB);
+			os.write(0xBF);
+
+			// ヘッダー行出力
+			writer.println("日時,分類,金額,お店,支払方法,メモ");
+
+			// データ行出力
+			for (Map<String, Object> row : list) {
+				String date = row.get("date") != null ? row.get("date").toString() : "";
+				String cls = row.get("classification") != null ? row.get("classification").toString() : "";
+				String amount = row.get("amount") != null ? row.get("amount").toString() : "";
+				String shop = row.get("shop") != null ? row.get("shop").toString() : "";
+				String payment = row.get("payment") != null ? row.get("payment").toString() : "";
+				String memo = row.get("memo") != null ? row.get("memo").toString() : "";
+
+				writer.println(String.format("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+						escapeCsv(date),
+						escapeCsv(cls),
+						escapeCsv(amount),
+						escapeCsv(shop),
+						escapeCsv(payment),
+						escapeCsv(memo)));
+			}
+			writer.flush();
+		}
+	}
+
+	// CSVエスケープ補助メソッド
+	private String escapeCsv(String val) {
+		if (val == null) return "";
+		return val.replace("\"", "\"\"");
+	}
 
 	// テーブル各行の一括更新処理 (POST) [1] 
 	@RequestMapping(value = "/syuukei/syuukei", method = RequestMethod.POST)
