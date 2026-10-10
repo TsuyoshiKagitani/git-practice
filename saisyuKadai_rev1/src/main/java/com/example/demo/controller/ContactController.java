@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -464,38 +466,45 @@ public class ContactController {
 			@RequestParam(value = "classification", required = false) String classification, // ★ 分類絞り込み 
 			Model model) { 
 		
-		// 1. 対象テーブルの決定（shisyutsuならpayout、syuunyuuならincome） 
-		String targetTable = "syuunyuu".equals(type) ? "income" : "payout"; 
+		// 1\. 対象テーブルの決定（shisyutsuならpayout、syuunyuuならincome） 
+		String targetTable = ("syuunyuu".equals(type) || "shuunyuu".equals(type)) ? "income" : "payout"; 
 		
-		// 2. 年月リストを取得 
+		// ★【仕様③対応】現在の日時から「当月（例：2026-10）」を自動取得 
+		String currentYearMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM")); 
+		// 2\. 年月リストを取得 
+		
 		String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM " + targetTable + " ORDER BY ym ASC"; 
 		List<String> yearMonthList = jdbcTemplate.queryForList(ymSql, String.class);
 		
+		// プルダウン内に「当月」が存在しない場合でも選択できるようリストに追加して整形 
+		if (!yearMonthList.contains(currentYearMonth)) { 
+			yearMonthList.add(currentYearMonth); 
+			java.util.Collections.sort(yearMonthList); // 年月順に並べ替え
+		} // ★【修正】波カッコをここで正しく閉じる！
+
+		// ★【修正】年月が未指定（初期表示やタブ切り替え時）の場合、常に「当月」を自動選択する
 		if (yearMonth == null || yearMonth.isEmpty()) { 
-			if (!yearMonthList.isEmpty()) { 
-				yearMonth = yearMonthList.get(yearMonthList.size() - 1); 
-				} else { 
-					yearMonth = "2025-01"; 
-				} 
-	}
-	
-	// 3. 分類リストをDBから動的に取得 
-	String clsSql = "SELECT DISTINCT classification FROM " + targetTable + " WHERE classification IS NOT NULL ORDER BY classification ASC"; 
-	List<String> classificationList = jdbcTemplate.queryForList(clsSql, String.class);
-	
-	// 4. データ抽出用SQLの組み立て（年月 ＋ 分類絞り込み）
-	StringBuilder sql = new StringBuilder(); 
-	sql.append("SELECT id, date, classification, amount, shop, payment, memo FROM ").append(targetTable); 
-	sql.append(" WHERE TO_CHAR(date, 'YYYY-MM') = ? ");
-	
-	List<Object> params = new java.util.ArrayList<>();
-	params.add(yearMonth);
-	
-	if (classification != null && !classification.trim().isEmpty()) { 
-		sql.append(" AND classification = ? "); 
-		params.add(classification);
-	}		
+			yearMonth = currentYearMonth; 
+		}
+
+		// 3. 分類リストをDBから動的に取得 
+		String clsSql = "SELECT DISTINCT classification FROM " + targetTable + " WHERE classification IS NOT NULL ORDER BY classification ASC"; 
+		List<String> classificationList = jdbcTemplate.queryForList(clsSql, String.class);
+
+		// 4. データ抽出用SQLの組み立て（年月 ＋ 分類絞り込み）
+		StringBuilder sql = new StringBuilder(); 
+		sql.append("SELECT id, no, date, classification, amount, shop, payment, memo FROM ").append(targetTable); 
+		sql.append(" WHERE TO_CHAR(date, 'YYYY-MM') = ? ");
+
+		List<Object> params = new java.util.ArrayList<>();
+		params.add(yearMonth);
+
+		if (classification != null && !classification.trim().isEmpty()) { 
+			sql.append(" AND classification = ? "); 
+			params.add(classification);
+		}		
 		sql.append(" ORDER BY date ASC, classification ASC, amount ASC"); 
+		
 		List<Map<String, Object>> syuukeiList = jdbcTemplate.queryForList(sql.toString(), params.toArray());
 		
 		// 5. Modelへ画面表示用データを格納
@@ -503,7 +512,7 @@ public class ContactController {
 		model.addAttribute("yearMonthList", yearMonthList); 
 		model.addAttribute("classificationList", classificationList);
 		model.addAttribute("selectedYearMonth", yearMonth); 
-		model.addAttribute("selectedClassification", classification); 
+		model.addAttribute("selectedClassification", classification != null ? classification : ""); 	
 		model.addAttribute("selectedType", type);
 		
 		return "syuukei";
@@ -564,7 +573,7 @@ public class ContactController {
 			}
 		}
 
-		// 3. 選択中の年月を引き継いで GET /shisyutsu へリダイレクト [1, 2]
+		// 3. 選択中の年月を引き継いで GET /shisyutsu へリダイ	レクト [1, 2]
 		return "redirect:/syuukei?yearMonth=" + yearMonth;
 
 	}
