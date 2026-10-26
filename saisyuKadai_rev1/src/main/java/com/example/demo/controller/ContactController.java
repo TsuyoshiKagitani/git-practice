@@ -225,9 +225,12 @@ public class ContactController {
 			if (isAmountTypeError) { 
 				// ★ 数値以外の入力時メッセージをセット 
 				result.reject("amountError", "「金額」には数値を入力してください"); 
-				} else { 
-				// ★ 未入力時メッセージをセット 
-				result.reject("registerError", "「日付」「分類」「金額」は必ず入力してください"); 
+			} else if(form.getDate() == null || form.getDate().trim().isEmpty() || 
+				form.getClassification() == null || form.getClassification().trim().isEmpty() || 
+				(form.getAmount() == null && !isAmountTypeError)) { 
+				result.reject("registerError", "「日付」「分類」「金額」は必ず入力してください");
+			} else if (result.hasFieldErrors("date")) {
+				result.reject("dateError", "「日付」は YYYY-MM-DD 形式（例: 2025-01-01）で入力してください");
 			}
 			
 			String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM payout ORDER BY ym ASC";
@@ -409,13 +412,16 @@ public class ContactController {
 			boolean isAmountTypeError = result.hasFieldErrors("amount") && 
 					(result.getFieldError("amount").isBindingFailure() || 
 					result.getFieldError("amount").getCode().contains("PositiveOrZero")); 
-			
+					
 			if (isAmountTypeError) { 
 				// ★ 数値以外の入力時メッセージをセット 
 				result.reject("amountError", "「金額」には数値を入力してください"); 
-				} else { 
-				// ★ 未入力時メッセージをセット 
-				result.reject("registerError", "「日付」「分類」「金額」は必ず入力してください"); 
+			} else if(form.getDate() == null || form.getDate().trim().isEmpty() || 
+				form.getClassification() == null || form.getClassification().trim().isEmpty() || 
+				(form.getAmount() == null && !isAmountTypeError)) { 
+				result.reject("registerError", "「日付」「分類」「金額」は必ず入力してください");
+			} else if (result.hasFieldErrors("date")) {
+				result.reject("dateError", "「日付」は YYYY-MM-DD 形式（例: 2025-01-01）で入力してください");
 			}
 			
 			String ymSql = "SELECT DISTINCT TO_CHAR(date, 'YYYY-MM') AS ym FROM income ORDER BY ym ASC";
